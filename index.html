@@ -20,6 +20,7 @@
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%234A90E2' rx='12'/><text x='50' y='35' text-anchor='middle' fill='white' font-size='20' font-weight='800'>HN</text><text x='50' y='70' text-anchor='middle' fill='white' font-size='8' font-weight='500'>CertusLS</text></svg>">
     
+    
     <style>
         * {
             margin: 0;
@@ -615,6 +616,7 @@
             font-size: 16px;
             transition: border-color 0.3s ease;
             font-family: inherit;
+            background: white;
         }
 
         .form-group input:focus,
@@ -1017,8 +1019,8 @@
                             <input type="text" id="company" name="company">
                         </div>
                         <div class="form-group">
-                            <label for="service">Service Interest</label>
-                            <select id="service" name="service">
+                            <label for="service">Service Interest *</label>
+                            <select id="service" name="service" required>
                                 <option value="">Select a service</option>
                                 <option value="qa-compliance">Quality Assurance & Compliance</option>
                                 <option value="ai-automation">AI & Automation Integration</option>
@@ -1027,7 +1029,9 @@
                                 <option value="regulatory-strategy">Regulatory Strategy</option>
                                 <option value="internal-external-audits">Internal & External Audits</option>
                                 <option value="qms-strategy">QMS Strategy</option>
+                                <option value="other">Other</option>
                             </select>
+                            <div class="error-message">Please select a service of interest</div>
                         </div>
                         <div class="form-group">
                             <label for="message">Project Details *</label>
@@ -1157,6 +1161,8 @@
                 isValid = false;
             } else if (field.type === 'email' && value && !emailRegex.test(value)) {
                 isValid = false;
+            } else if (field.tagName === 'SELECT' && field.hasAttribute('required') && !value) {
+                isValid = false;
             }
 
             // Apply error state if invalid
@@ -1168,9 +1174,14 @@
         }
 
         // Real-time validation
-        contactForm.querySelectorAll('input, textarea').forEach(field => {
+        contactForm.querySelectorAll('input, textarea, select').forEach(field => {
             field.addEventListener('blur', () => validateField(field));
             field.addEventListener('input', () => {
+                if (field.closest('.form-group').classList.contains('error')) {
+                    validateField(field);
+                }
+            });
+            field.addEventListener('change', () => {
                 if (field.closest('.form-group').classList.contains('error')) {
                     validateField(field);
                 }
@@ -1198,12 +1209,11 @@
         }
 
         // Form submission
-        contactForm.addEventListener('submit', async function(e) {
+        contactForm.addEventListener('submit', function(e) {
             e.preventDefault();
 
             // Validate all fields
             let isFormValid = true;
-            const formData = new FormData(contactForm);
             const requiredFields = contactForm.querySelectorAll('[required]');
 
             requiredFields.forEach(field => {
@@ -1217,48 +1227,39 @@
                 return;
             }
 
-            // Show loading state
-            submitBtn.classList.add('loading');
-            submitBtn.disabled = true;
+            // Get form data
+            const formData = new FormData(contactForm);
+            const data = Object.fromEntries(formData);
 
-            try {
-                // Prepare email data
-                const formDataObj = Object.fromEntries(formData);
-                
-                // Create mailto link with form data
-                const subject = encodeURIComponent(`CertusLS Contact Form - ${formDataObj.service || 'General Inquiry'}`);
-                const body = encodeURIComponent(`
-Name: ${formDataObj.name}
-Email: ${formDataObj.email}
-Company: ${formDataObj.company || 'Not specified'}
-Service Interest: ${formDataObj.service || 'Not specified'}
+            // Create email content
+            const subject = `CertusLS Contact Form - ${data.service}`;
+            const body = `Name: ${data.name}
+Email: ${data.email}
+Company: ${data.company || 'Not specified'}
+Service Interest: ${data.service}
 
 Project Details:
-${formDataObj.message}
+${data.message}
 
 ---
-Sent from www.certusls.com contact form
-                `.trim());
-                
-                const mailtoLink = `mailto:haim@certusls.com?subject=${subject}&body=${body}`;
-                
-                // Open default email client
-                window.location.href = mailtoLink;
-                
-                // Show success message
-                showMessage('Your email client should now open with the message ready to send. If it doesn\'t open automatically, please email haim@certusls.com directly.');
-                
-                // Reset form
-                contactForm.reset();
+Sent from www.certusls.com contact form`;
 
-            } catch (error) {
-                console.error('Form submission error:', error);
-                showMessage('There was an error. Please email haim@certusls.com directly or try again.', 'error');
-            } finally {
-                // Remove loading state
-                submitBtn.classList.remove('loading');
-                submitBtn.disabled = false;
-            }
+            // Create mailto link
+            const mailtoLink = `mailto:haim@certusls.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            
+            // Open email client
+            window.open(mailtoLink);
+            
+            // Clear all form fields immediately
+            contactForm.reset();
+            
+            // Remove any error states
+            contactForm.querySelectorAll('.form-group').forEach(group => {
+                group.classList.remove('error');
+            });
+            
+            // Show success message
+            showMessage('Your email client will open with the message ready to send. Thank you for your interest in CertusLS!');
         });
 
         // Add intersection observer for animations
